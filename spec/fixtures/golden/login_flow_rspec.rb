@@ -14,7 +14,7 @@ RSpec.describe "Login flow" do
   it "replays the recorded session" do
     @driver.navigate.to "https://example.com/login"
     @driver.find_element(id: "email").send_keys "user@example.com"
-    @driver.find_element(id: "password").send_keys ENV.fetch("SELENIUM_SPEC_PASSWORD")
+    @driver.find_element(id: "password").send_keys ENV.fetch("SPEC_AI_PASSWORD")
     @driver.find_element(id: "login-btn").click
     @wait.until { @driver.find_element(css: ".welcome").displayed? }
     expect(@driver.find_element(css: ".welcome").text).to include("Welcome back")

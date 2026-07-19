@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "selenium_spec"
+require "spec_ai"
 
 Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 

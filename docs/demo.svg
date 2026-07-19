@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 920" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .chrome { fill: #161b22; }
+      .tool { fill: #79c0ff; font-weight: bold; }
+      .out { fill: #c9d1d9; }
+      .dim { fill: #8b949e; }
+      .ok { fill: #56d364; }
+      .mask { fill: #f2cc60; }
+      .kw { fill: #ff7b72; }
+      .str { fill: #a5d6ff; }
+      .code { fill: #c9d1d9; }
+      .title { fill: #8b949e; font-size: 12px; }
+    </style>
+  </defs>
+  <rect class="bg" width="860" height="920" rx="10"/>
+  <rect class="chrome" width="860" height="34" rx="10"/>
+  <circle cx="22" cy="17" r="6" fill="#ff5f57"/><circle cx="42" cy="17" r="6" fill="#febc2e"/><circle cx="62" cy="17" r="6" fill="#28c840"/>
+  <text x="430" y="21" text-anchor="middle" class="title">Claude driving spec_ai (MCP)</text>
+
+  <text x="24" y="64" class="tool">▸ start_browser</text>
+  <text x="44" y="82" class="out">Started chrome (headless: true). Recording actions for spec export.</text>
+
+  <text x="24" y="108" class="tool">▸ navigate</text>
+  <text x="44" y="126" class="out">Now at: Fixture Login (.../spec/fixtures/site/login.html)</text>
+
+  <text x="24" y="152" class="tool">▸ snapshot</text>
+  <text x="44" y="170" class="out">Interactive elements (4):</text>
+  <text x="44" y="188" class="dim">- input "" [locator: id=email]   - input "" [locator: id=password]</text>
+  <text x="44" y="206" class="dim">- button "Log in" [locator: id=login-btn]  ...</text>
+
+  <text x="24" y="232" class="tool">▸ type id=email "user@example.com"</text>
+  <text x="44" y="250" class="out">Typed "user@example.com" into id=email.</text>
+
+  <text x="24" y="276" class="tool">▸ type id=password ********</text>
+  <text x="44" y="294" class="mask">Typed into id=password (password field - value masked in recording).</text>
+
+  <text x="24" y="320" class="tool">▸ click id=login-btn</text>
+  <text x="44" y="338" class="out">Clicked id=login-btn.</text>
+
+  <text x="24" y="364" class="tool">▸ wait_for css=.welcome visible</text>
+  <text x="44" y="382" class="ok">Condition met: css=.welcome is visible.</text>
+
+  <text x="24" y="408" class="tool">▸ assert_text "Welcome back"</text>
+  <text x="44" y="426" class="ok">Assertion passed: page contains "Welcome back".</text>
+
+  <text x="24" y="452" class="tool">▸ export_spec "Login flow"</text>
+
+  <rect x="24" y="468" width="812" height="404" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="40" y="492" class="dim"># login_flow_spec.rb - runs green on first try</text>
+  <text x="40" y="514" class="kw">require</text><text x="102" y="514" class="str">"selenium-webdriver"</text>
+  <text x="40" y="532" class="kw">require</text><text x="102" y="532" class="str">"rspec"</text>
+  <text x="40" y="558" class="code">RSpec.describe <tspan class="str">"Login flow"</tspan> <tspan class="kw">do</tspan></text>
+  <text x="56" y="580" class="code"><tspan class="kw">before do</tspan></text>
+  <text x="72" y="598" class="code">options = Selenium::WebDriver::Options.chrome</text>
+  <text x="72" y="616" class="code">options.add_argument(<tspan class="str">"--headless=new"</tspan>)</text>
+  <text x="72" y="634" class="code">@driver = Selenium::WebDriver.for <tspan class="str">:chrome</tspan>, options: options</text>
+  <text x="72" y="652" class="code">@wait = Selenium::WebDriver::Wait.new(timeout: 10)</text>
+  <text x="56" y="670" class="code"><tspan class="kw">end</tspan></text>
+  <text x="56" y="692" class="code"><tspan class="kw">after</tspan> { @driver.quit }</text>
+  <text x="56" y="714" class="code"><tspan class="kw">it</tspan> <tspan class="str">"replays the recorded session"</tspan> <tspan class="kw">do</tspan></text>
+  <text x="72" y="732" class="code">@driver.navigate.to <tspan class="str">"https://example.com/login"</tspan></text>
+  <text x="72" y="750" class="code">@driver.find_element(id: <tspan class="str">"email"</tspan>).send_keys <tspan class="str">"user@example.com"</tspan></text>
+  <text x="72" y="768" class="code">@driver.find_element(id: <tspan class="str">"password"</tspan>).send_keys <tspan class="mask">ENV.fetch("SPEC_AI_PASSWORD")</tspan></text>
+  <text x="72" y="786" class="code">@driver.find_element(id: <tspan class="str">"login-btn"</tspan>).click</text>
+  <text x="72" y="804" class="code">@wait.until { @driver.find_element(css: <tspan class="str">".welcome"</tspan>).displayed? }</text>
+  <text x="72" y="822" class="code">expect(@driver.find_element(css: <tspan class="str">".welcome"</tspan>).text).to include(<tspan class="str">"Welcome back"</tspan>)</text>
+  <text x="56" y="844" class="code"><tspan class="kw">end</tspan></text>
+  <text x="40" y="864" class="code"><tspan class="kw">end</tspan></text>
+
+  <text x="24" y="900" class="ok">✓ 1 example, 0 failures</text>
+</svg>
