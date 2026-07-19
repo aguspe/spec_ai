@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — Unreleased
+## 0.1.0 - Unreleased
 
 - Initial release: 17-tool MCP server driving selenium-webdriver.
 - Session recording (IR) with password masking.

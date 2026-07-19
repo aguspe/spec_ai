@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe SeleniumSpec::BrowserSession, :browser do
+RSpec.describe SpecAI::BrowserSession, :browser do
   subject(:session) { described_class.new }
 
   let(:fixture_url) { "file://#{File.expand_path('../fixtures/site/login.html', __dir__)}" }
@@ -32,6 +32,6 @@ RSpec.describe SeleniumSpec::BrowserSession, :browser do
     session.navigate(fixture_url)
     session.snapshot
     expect { session.find(%w[id login]) }
-      .to raise_error(SeleniumSpec::ElementNotFoundError, /Did you mean/)
+      .to raise_error(SpecAI::ElementNotFoundError, /Did you mean/)
   end
 end

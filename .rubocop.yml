@@ -39,7 +39,7 @@ RSpec/MultipleExpectations:
 
 RSpec/DescribeClass:
   Exclude:
-    - "spec/selenium_spec/tools/**/*"
+    - "spec/spec_ai/tools/**/*"
     - "spec/integration/**/*"
 
 RSpec/SpecFilePathFormat:
