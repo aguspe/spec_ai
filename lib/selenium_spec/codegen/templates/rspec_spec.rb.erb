@@ -1,0 +1,26 @@
+require "selenium-webdriver"
+require "rspec"
+
+RSpec.describe <%= @description.inspect %> do
+  before do
+<% if headless? -%>
+    options = Selenium::WebDriver::Options.<%= browser %>
+    options.add_argument(<%= headless_flag.inspect %>)
+    @driver = Selenium::WebDriver.for :<%= browser %>, options: options
+<% else -%>
+    @driver = Selenium::WebDriver.for :<%= browser %>
+<% end -%>
+    @wait = Selenium::WebDriver::Wait.new(timeout: 10)
+  end
+
+  after { @driver.quit }
+
+  it "replays the recorded session" do
+<% unless assertions? -%>
+    # PENDING: no assertions were recorded in this session
+<% end -%>
+<% body_lines.each do |line| -%>
+    <%= line %>
+<% end -%>
+  end
+end
