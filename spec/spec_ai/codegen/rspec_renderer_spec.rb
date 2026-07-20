@@ -52,6 +52,18 @@ RSpec.describe SpecAI::Codegen::RspecRenderer do
     expect(out).to include("Selenium::WebDriver::Error::NoSuchElementError")
   end
 
+  it "warns and keeps the first browser when a recording has multiple sessions" do
+    steps = [
+      SpecAI::Step.new(action: :start_browser, value: "chrome", headless: true),
+      SpecAI::Step.new(action: :navigate, value: "https://example.com"),
+      SpecAI::Step.new(action: :start_browser, value: "firefox", headless: false),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include("# WARNING: this recording has 2 browser sessions")
+    expect(out).to include("Selenium::WebDriver.for :chrome")
+  end
+
   it "renders non-headless start without options" do
     steps = [SpecAI::Step.new(action: :start_browser, value: "firefox", headless: false),
              SpecAI::Step.new(action: :assert_title, expected: "x")]

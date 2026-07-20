@@ -160,6 +160,28 @@ RSpec.describe SpecAI::Codegen::CapybaraRenderer do
     expect(out).to include(%q{find("[name='user\\\\'s_field']").click})
   end
 
+  it "warns when a recording spans multiple hosts" do
+    steps = [
+      SpecAI::Step.new(action: :navigate, value: "https://a.example.com/one"),
+      SpecAI::Step.new(action: :navigate, value: "https://b.example.com/two"),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include("# WARNING: this recording spans multiple hosts (a.example.com, b.example.com)")
+    expect(out).to include('visit "/one"')
+    expect(out).to include('visit "/two"')
+  end
+
+  it "warns when a recording has multiple browser sessions" do
+    steps = [
+      SpecAI::Step.new(action: :start_browser, value: "chrome", headless: true),
+      SpecAI::Step.new(action: :start_browser, value: "firefox", headless: false),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include("# WARNING: this recording has 2 browser sessions")
+  end
+
   it "keeps query and fragment in visited paths" do
     steps = [
       SpecAI::Step.new(action: :navigate, value: "https://example.com/app?tab=2#/checkout"),

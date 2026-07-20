@@ -127,7 +127,9 @@ RSpec.describe "Login flow" do
 
   it "logs in successfully" do
     @driver.navigate.to "https://example.com/login"
+    @driver.find_element(id: "email").clear
     @driver.find_element(id: "email").send_keys "user@example.com"
+    @driver.find_element(id: "password").clear
     @driver.find_element(id: "password").send_keys ENV.fetch("SPEC_AI_PASSWORD")
     @driver.find_element(id: "login-btn").click
     @wait.until { @driver.find_element(css: ".welcome").displayed? }
@@ -136,11 +138,16 @@ RSpec.describe "Login flow" do
 end
 ```
 
+The `type` tool clears the field before typing by default (`clear: true`), so the
+RSpec form emits a `.clear` before each `send_keys` and the Capybara form uses
+`fill_in`. A caller that passes `clear: false` records append semantics instead:
+RSpec omits the `.clear`, Capybara emits `find(...).send_keys(...)`.
+
 ### Capybara format (`format: "capybara"`)
 
 - Output is a Rails system spec (`type: :system`, `require "rails_helper"`).
 - Idiomatic mapping via element metadata: input with matching id/name → `fill_in "email"`; button with text → `click_button "Log in"`; fallback `find(css)` otherwise.
-- URLs become relative paths (`visit "/login"`) - base URL stripped, system specs run against the Rails test server.
+- URLs become relative paths (`visit "/login"`) - base URL stripped, system specs run against the Rails test server. A recording that spans multiple hosts emits a `# WARNING` comment since relative paths cannot target more than one host.
 - `wait_for` steps fold into auto-waiting Capybara matchers (`have_css`).
 - Assertions → `expect(page).to have_content/have_css/have_current_path`.
 - No driver setup/teardown - `rails_helper` owns it.

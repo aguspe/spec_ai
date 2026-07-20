@@ -29,6 +29,16 @@ RSpec.describe "interaction tools" do
     expect(step.masked).to be_falsey
   end
 
+  it "type defaults to clear: true so exports use idiomatic replace semantics" do
+    SpecAI::Tools::Type.call(strategy: "id", value: "email", text: "a@b.c", server_context: ctx)
+    expect(app.recorder.steps.last.clear).to be true
+  end
+
+  it "type records clear: false when the caller opts into append" do
+    SpecAI::Tools::Type.call(strategy: "id", value: "email", text: "a@b.c", clear: false, server_context: ctx)
+    expect(app.recorder.steps.last.clear).to be false
+  end
+
   it "type masks password fields and never stores the value" do
     allow(session).to receive(:type).and_return({ tag: "input", type: "password", id: "password",
                                                   name: "password", text: "" })

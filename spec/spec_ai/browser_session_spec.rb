@@ -116,6 +116,17 @@ RSpec.describe SpecAI::BrowserSession do
       .to raise_error(SpecAI::OptionNotFoundError, /No option with value "XX".*Available: "DK"/m)
   end
 
+  it "rejects a wait_for with an unknown condition instead of burning the timeout" do
+    session.start(browser: "chrome")
+    expect { session.wait_for(%w[css .x], condition: "invisible") }
+      .to raise_error(ArgumentError, /unknown wait condition/)
+  end
+
+  it "rejects a select_option with neither text nor value" do
+    session.start(browser: "chrome")
+    expect { session.select_option(%w[id country]) }.to raise_error(ArgumentError, /provide text or value/)
+  end
+
   it "identifies password fields from metadata" do
     expect(session.password_field?(type: "password")).to be true
     expect(session.password_field?(type: "text")).to be false
