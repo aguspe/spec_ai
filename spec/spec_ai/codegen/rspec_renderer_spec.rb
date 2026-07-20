@@ -36,6 +36,21 @@ RSpec.describe SpecAI::Codegen::RspecRenderer do
     expect(out).to include('expect(@driver.title).to eq("Home")')
   end
 
+  it "exports every assertion as a wait followed by the expect" do
+    steps = [
+      SpecAI::Step.new(action: :assert_text, expected: "Agustin"),
+      SpecAI::Step.new(action: :assert_title, expected: "Store"),
+      SpecAI::Step.new(action: :assert_element, locator: ["css", ".cart"], condition: "visible"),
+      SpecAI::Step.new(action: :assert_url, expected: "cart")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include('@wait.until { @driver.find_element(tag_name: "body").text.include?("Agustin") }')
+    expect(out).to include('@wait.until { @driver.title == "Store" }')
+    expect(out).to include('@wait.until { @driver.find_element(css: ".cart").displayed? }')
+    expect(out).to include('@wait.until { @driver.current_url.match?(Regexp.new("cart")) }')
+    expect(out).to include("ignore: ignored")
+  end
+
   it "renders non-headless start without options" do
     steps = [SpecAI::Step.new(action: :start_browser, value: "firefox", headless: false),
              SpecAI::Step.new(action: :assert_title, expected: "x")]

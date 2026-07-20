@@ -6,7 +6,8 @@ RSpec.describe "Login flow" do
     options = Selenium::WebDriver::Options.chrome
     options.add_argument("--headless=new")
     @driver = Selenium::WebDriver.for :chrome, options: options
-    @wait = Selenium::WebDriver::Wait.new(timeout: 10)
+    ignored = [Selenium::WebDriver::Error::StaleElementReferenceError]
+    @wait = Selenium::WebDriver::Wait.new(timeout: 10, ignore: ignored)
   end
 
   after { @driver.quit }
@@ -17,6 +18,7 @@ RSpec.describe "Login flow" do
     @driver.find_element(id: "password").send_keys ENV.fetch("SPEC_AI_PASSWORD")
     @driver.find_element(id: "login-btn").click
     @wait.until { @driver.find_element(css: ".welcome").displayed? }
+    @wait.until { @driver.find_element(css: ".welcome").text.include?("Welcome back") }
     expect(@driver.find_element(css: ".welcome").text).to include("Welcome back")
   end
 end

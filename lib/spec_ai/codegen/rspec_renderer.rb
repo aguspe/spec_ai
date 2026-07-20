@@ -60,10 +60,10 @@ module SpecAI
         when :select_option then [select_line(step)]
         when :wait_for then [wait_line(step)]
         when :execute_script then [manual_comment(step)]
-        when :assert_text then [assert_text_line(step)]
-        when :assert_title then ["expect(@driver.title).to eq(#{step.expected.inspect})"]
-        when :assert_element then [assert_element_line(step)]
-        when :assert_url then ["expect(@driver.current_url).to match(Regexp.new(#{step.expected.inspect}))"]
+        when :assert_text then assert_text_lines(step)
+        when :assert_title then assert_title_lines(step)
+        when :assert_element then assert_element_lines(step)
+        when :assert_url then assert_url_lines(step)
         else []
         end
       end
@@ -97,17 +97,32 @@ module SpecAI
         "# MANUAL: review this step - execute_script recorded: #{snippet}"
       end
 
-      def assert_text_line(step)
+      # Assertions export as a wait followed by the expect: the live check does not
+      # race page loads (tool round-trips add latency), but a replayed spec does.
+      def assert_text_lines(step)
         target = step.scope ? "@driver.find_element(#{loc(step.scope)})" : '@driver.find_element(tag_name: "body")'
-        "expect(#{target}.text).to include(#{step.expected.inspect})"
+        ["@wait.until { #{target}.text.include?(#{step.expected.inspect}) }",
+         "expect(#{target}.text).to include(#{step.expected.inspect})"]
       end
 
-      def assert_element_line(step)
+      def assert_title_lines(step)
+        ["@wait.until { @driver.title == #{step.expected.inspect} }",
+         "expect(@driver.title).to eq(#{step.expected.inspect})"]
+      end
+
+      def assert_element_lines(step)
         if step.condition == "visible"
-          "expect(@driver.find_element(#{loc(step.locator)}).displayed?).to be true"
+          ["@wait.until { @driver.find_element(#{loc(step.locator)}).displayed? }",
+           "expect(@driver.find_element(#{loc(step.locator)}).displayed?).to be true"]
         else
-          "expect(@driver.find_elements(#{loc(step.locator)}).any?).to be true"
+          ["@wait.until { @driver.find_elements(#{loc(step.locator)}).any? }",
+           "expect(@driver.find_elements(#{loc(step.locator)}).any?).to be true"]
         end
+      end
+
+      def assert_url_lines(step)
+        ["@wait.until { @driver.current_url.match?(Regexp.new(#{step.expected.inspect})) }",
+         "expect(@driver.current_url).to match(Regexp.new(#{step.expected.inspect}))"]
       end
     end
   end
