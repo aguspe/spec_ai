@@ -43,6 +43,14 @@ module SpecAI
         @steps.any? { |s| s.action.to_s.start_with?("assert_") }
       end
 
+      def warnings
+        starts = @steps.count { |s| s.action == :start_browser }
+        return [] if starts <= 1
+
+        ["# WARNING: this recording has #{starts} browser sessions merged into one example; " \
+         "the before hook uses the first (#{browser}). Call reset_recording between sessions for a clean spec."]
+      end
+
       def body_lines
         @steps.flat_map { |step| lines_for(step) }
       end

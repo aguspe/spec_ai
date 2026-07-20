@@ -49,7 +49,7 @@ module SpecAI
 
     def quit
       @driver&.quit
-    rescue Selenium::WebDriver::Error::WebDriverError, Errno::ECONNREFUSED
+    rescue Selenium::WebDriver::Error::WebDriverError, *CONNECTION_ERRORS
       nil
     ensure
       @driver = nil
@@ -93,10 +93,14 @@ module SpecAI
       metadata
     end
 
+    WAIT_CONDITIONS = %w[visible present gone].freeze
+
     def select_option(locator, text: nil, value: nil)
+      raise ArgumentError, "provide text or value to select" if text.nil? && value.nil?
+
       element = find(locator)
       metadata = guard { element_metadata(element) }
-      by, chosen = text ? [:text, text] : [:value, value]
+      by, chosen = text.nil? ? [:value, value] : [:text, text]
       select = guard { Selenium::WebDriver::Support::Select.new(element) }
       begin
         guard { select.select_by(by, chosen) }
@@ -117,6 +121,8 @@ module SpecAI
 
     # Named wait_for (not wait_for?) per the brief's public interface; it returns true or raises.
     def wait_for(locator, condition:, timeout: DEFAULT_TIMEOUT) # rubocop:disable Naming/PredicateMethod
+      raise ArgumentError, "unknown wait condition: #{condition}" unless WAIT_CONDITIONS.include?(condition)
+
       strategy, value = locator
       by = { strategy.to_sym => value }
       guard do
@@ -174,7 +180,7 @@ module SpecAI
 
     def snapshot_stale?
       @last_snapshot_url != @driver.current_url
-    rescue Selenium::WebDriver::Error::WebDriverError, Errno::ECONNREFUSED
+    rescue Selenium::WebDriver::Error::WebDriverError, *CONNECTION_ERRORS
       true
     end
 

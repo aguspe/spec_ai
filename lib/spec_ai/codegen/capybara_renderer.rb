@@ -27,6 +27,32 @@ module SpecAI
         @steps.any? { |s| s.action.to_s.start_with?("assert_") }
       end
 
+      def warnings
+        lines = []
+        starts = @steps.count { |s| s.action == :start_browser }
+        if starts > 1
+          lines << "# WARNING: this recording has #{starts} browser sessions merged into one example; " \
+                   "re-record or call reset_recording between sessions for a clean spec."
+        end
+        hosts = navigate_hosts
+        if hosts.size > 1
+          lines << "# WARNING: this recording spans multiple hosts (#{hosts.join(', ')}); visit paths are " \
+                   "relative to a single Capybara app_host and will not target the other host(s)."
+        end
+        lines
+      end
+
+      def navigate_hosts
+        @steps.select { |s| s.action == :navigate }.filter_map { |s| host_of(s.value) }.uniq
+      end
+
+      def host_of(url)
+        host = URI.parse(url).host
+        host unless host.nil? || host.empty?
+      rescue URI::InvalidURIError
+        nil
+      end
+
       def body_lines
         @steps.flat_map { |step| lines_for(step) }
       end

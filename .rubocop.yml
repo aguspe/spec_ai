@@ -30,10 +30,12 @@ Metrics/AbcSize:
   Max: 25
 
 Metrics/ClassLength:
-  Max: 130
+  Max: 150
 
 RSpec/ExampleLength:
   Max: 25
+  Exclude:
+    - "spec/integration/**/*"
 
 RSpec/MultipleExpectations:
   Max: 6

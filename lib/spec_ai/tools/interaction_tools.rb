@@ -44,19 +44,20 @@ module SpecAI
       extend Helpers
 
       tool_name "type"
-      description "Type text into an element. Password fields are masked in the recording " \
+      description "Type text into an element, replacing any existing value. Pass clear: false " \
+                  "to append instead. Password fields are masked in the recording " \
                   "and exported as ENV.fetch(\"SPEC_AI_PASSWORD\")."
       input_schema(
         properties: LOCATOR_PROPS.merge(
           text: { type: "string" },
-          clear: { type: "boolean", default: false }
+          clear: { type: "boolean", default: true }
         ),
         required: %w[strategy value text]
       )
 
       class << self
         # rubocop:disable Style/KeywordParametersOrder
-        def call(strategy:, value:, text:, clear: false, server_context:)
+        def call(strategy:, value:, text:, clear: true, server_context:)
           # rubocop:enable Style/KeywordParametersOrder
           guarded(server_context) do |app|
             meta = app.session.type([strategy, value], text, clear: clear)
