@@ -49,7 +49,11 @@ module SpecAI
       def relative(url)
         uri = URI.parse(url)
         path = uri.path.to_s.empty? ? "/" : uri.path
-        uri.query ? "#{path}?#{uri.query}" : path
+        path += "?#{uri.query}" if uri.query
+        path += "##{uri.fragment}" if uri.fragment
+        path
+      rescue URI::InvalidURIError
+        url
       end
 
       def css(locator)
@@ -79,29 +83,42 @@ module SpecAI
         end
       end
 
+      # clear: true replays as replace (fill_in/set); clear: false replays as append
+      # (send_keys), matching what Selenium actually did during the recording.
       def type_line(step)
         el = step.element || {}
         field = el[:name] || el[:id]
         value = step.masked ? 'ENV.fetch("SPEC_AI_PASSWORD")' : step.value.inspect
-        if field && %w[input textarea].include?(el[:tag])
+        if !step.clear
+          "#{finder(step.locator)}.send_keys(#{value})"
+        elsif field && %w[input textarea].include?(el[:tag])
           "fill_in #{field.inspect}, with: #{value}"
         else
           "#{finder(step.locator)}.set(#{value})"
         end
       end
 
+      # Capybara's select matches option TEXT; a recording made via option value must
+      # target the option node directly or the exported spec fails with ElementNotFound.
       def select_line(step)
         el = step.element || {}
         field = el[:name] || el[:id]
-        field ? "select #{step.value.inspect}, from: #{field.inspect}" : "#{finder(step.locator)}.select_option"
+        if step.select_by == :value
+          "#{finder(step.locator)}.find(\"option[value='#{step.value}']\").select_option"
+        elsif field
+          "select #{step.value.inspect}, from: #{field.inspect}"
+        else
+          "#{finder(step.locator)}.select_option"
+        end
       end
 
       # Dispatches by locator strategy (not the lossy css() fallback) so xpath/link_text
-      # export as valid matchers; "present" adds visible: :all to match live wait_for
-      # semantics (find_elements sees hidden elements; have_css defaults to visible-only).
+      # export as valid matchers. "present" and "gone" add visible: :all to match live
+      # find_elements semantics (DOM presence/absence, hidden elements included);
+      # only "visible" uses Capybara's visible-only default.
       def presence_line(locator, condition)
         matcher, arg = matcher_and_arg(locator, condition == "gone")
-        suffix = condition == "present" ? ", visible: :all" : ""
+        suffix = condition == "visible" ? "" : ", visible: :all"
         "expect(page).to #{matcher}(#{arg}#{suffix})"
       end
 

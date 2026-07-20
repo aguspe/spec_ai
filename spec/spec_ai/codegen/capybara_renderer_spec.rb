@@ -5,9 +5,9 @@ RSpec.describe SpecAI::Codegen::CapybaraRenderer do
     r = SpecAI::Recorder.new
     r.record(action: :start_browser, value: "chrome", headless: true)
     r.record(action: :navigate, value: "https://example.com/login")
-    r.record(action: :type, locator: %w[id email], value: "user@example.com",
+    r.record(action: :type, locator: %w[id email], value: "user@example.com", clear: true,
              element: { tag: "input", text: "", id: "email", name: "email", type: "text" })
-    r.record(action: :type, locator: %w[id password], masked: true,
+    r.record(action: :type, locator: %w[id password], masked: true, clear: true,
              element: { tag: "input", text: "", id: "password", name: "password", type: "password" })
     r.record(action: :click, locator: %w[id login-btn],
              element: { tag: "button", text: "Log in", id: "login-btn", name: nil, type: "submit" })
@@ -30,7 +30,7 @@ RSpec.describe SpecAI::Codegen::CapybaraRenderer do
     expect(out).to include('find(".card").click')
   end
 
-  it "maps remaining actions to idiomatic Capybara" do # rubocop:disable RSpec/MultipleExpectations
+  it "maps remaining actions to idiomatic Capybara" do
     steps = [
       SpecAI::Step.new(action: :click, locator: %w[link_text Pricing],
                        element: { tag: "a", text: "Pricing", id: nil, name: nil, type: nil }),
@@ -44,7 +44,7 @@ RSpec.describe SpecAI::Codegen::CapybaraRenderer do
     out = described_class.render(steps: steps, description: "d")
     expect(out).to include('click_link "Pricing"')
     expect(out).to include('select "Denmark", from: "country"')
-    expect(out).to include('expect(page).to have_no_css(".spinner")')
+    expect(out).to include('expect(page).to have_no_css(".spinner", visible: :all)')
     expect(out).to include('expect(page).to have_css("#cart", visible: :all)')
     expect(out).to include('expect(page).to have_current_path(Regexp.new("checkout"), url: true)')
     expect(out).to include('expect(page).to have_content("Done")')
@@ -66,7 +66,7 @@ RSpec.describe SpecAI::Codegen::CapybaraRenderer do
       SpecAI::Step.new(action: :assert_title, expected: "x")
     ]
     out = described_class.render(steps: steps, description: "d")
-    expect(out).to include('expect(page).to have_no_link("Pricing")')
+    expect(out).to include('expect(page).to have_no_link("Pricing", visible: :all)')
   end
 
   it "exports wait_for css present with visible: :all" do
@@ -94,5 +94,35 @@ RSpec.describe SpecAI::Codegen::CapybaraRenderer do
     ]
     out = described_class.render(steps: steps, description: "d")
     expect(out).to include('expect(page).to have_link("Pricing")')
+  end
+
+  it "exports select-by-value by targeting the option node, not option text" do
+    steps = [
+      SpecAI::Step.new(action: :select_option, locator: %w[id country], value: "DK", select_by: :value,
+                       element: { tag: "select", text: "", id: "country", name: "country", type: nil }),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include(%q{find("#country").find("option[value='DK']").select_option})
+  end
+
+  it "exports type without clear as send_keys to preserve append semantics" do
+    steps = [
+      SpecAI::Step.new(action: :type, locator: %w[id notes], value: " appended",
+                       element: { tag: "textarea", text: "", id: "notes", name: "notes", type: nil }),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include('find("#notes").send_keys(" appended")')
+    expect(out).not_to include("fill_in")
+  end
+
+  it "keeps query and fragment in visited paths" do
+    steps = [
+      SpecAI::Step.new(action: :navigate, value: "https://example.com/app?tab=2#/checkout"),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include('visit "/app?tab=2#/checkout"')
   end
 end

@@ -45,6 +45,12 @@ RSpec.describe "codegen tools" do
     expect(response_text(res)).to eq("ERROR: Nothing recorded yet - drive the browser first, then export.")
   end
 
+  it "returns a tool error instead of raising when rendering fails" do
+    allow(SpecAI::Codegen::RspecRenderer).to receive(:render).and_raise(ArgumentError, "boom")
+    res = SpecAI::Tools::ExportSpec.call(description: "x", server_context: ctx)
+    expect(response_text(res)).to eq("ERROR: Export failed (ArgumentError): boom")
+  end
+
   it "reset_recording clears steps but not the session" do
     session.alive = true
     res = SpecAI::Tools::ResetRecording.call(server_context: ctx)

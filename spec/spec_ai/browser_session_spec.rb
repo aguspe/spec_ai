@@ -41,7 +41,29 @@ RSpec.describe SpecAI::BrowserSession do
                                                 .and_raise(Selenium::WebDriver::Error::NoSuchElementError)
     session.instance_variable_set(:@last_snapshot,
                                   [{ "tag" => "button", "id" => "login-btn", "name" => nil, "text" => "Log in" }])
+    session.instance_variable_set(:@last_snapshot_url, "https://x.test/")
     expect { session.find(%w[id missing]) }.to raise_error(SpecAI::ElementNotFoundError, /Did you mean/)
+  end
+
+  it "drops suggestions once the page has changed since the snapshot" do
+    session.start(browser: "chrome")
+    allow(fake_driver).to receive(:find_element).with({ id: "missing" })
+                                                .and_raise(Selenium::WebDriver::Error::NoSuchElementError)
+    session.instance_variable_set(:@last_snapshot,
+                                  [{ "tag" => "button", "id" => "login-btn", "name" => nil, "text" => "Log in" }])
+    session.instance_variable_set(:@last_snapshot_url, "https://x.test/previous-page")
+    expect { session.find(%w[id missing]) }.to raise_error(SpecAI::ElementNotFoundError) do |error|
+      expect(error.message).not_to include("Did you mean")
+    end
+  end
+
+  it "quits the old driver when restarting after the session died" do
+    session.start(browser: "chrome")
+    allow(fake_driver).to receive(:current_url).and_raise(Selenium::WebDriver::Error::InvalidSessionIdError)
+    expect { session.current_url }.to raise_error(SpecAI::SessionDeadError)
+    session.start(browser: "chrome")
+    expect(fake_driver).to have_received(:quit)
+    expect(session).to be_alive
   end
 
   it "marks session dead on InvalidSessionIdError and raises SessionDeadError afterwards" do

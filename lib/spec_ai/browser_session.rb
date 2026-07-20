@@ -33,7 +33,7 @@ module SpecAI
     end
 
     def start(browser:, headless: true)
-      quit if alive?
+      quit if @driver
       @browser_name = browser
       @driver = @driver_factory.call(browser, headless)
       @dead = false
@@ -118,6 +118,8 @@ module SpecAI
 
     def snapshot
       @last_snapshot = guard { @driver.execute_script(SNAPSHOT_JS) } || []
+      @last_snapshot_url = guard { @driver.current_url }
+      @last_snapshot
     end
 
     def element_metadata(element)
@@ -134,7 +136,11 @@ module SpecAI
       metadata[:type] == "password"
     end
 
+    # Suggestions come from the last snapshot; after a navigation they would describe
+    # the previous page, so they are only offered while the URL still matches.
     def suggestions_for(locator)
+      return [] if @last_snapshot.empty? || snapshot_stale?
+
       _, value = locator
       needle = value.to_s.downcase
       scored = @last_snapshot.select do |entry|
@@ -146,6 +152,12 @@ module SpecAI
     end
 
     private
+
+    def snapshot_stale?
+      @last_snapshot_url != @driver.current_url
+    rescue Selenium::WebDriver::Error::WebDriverError, Errno::ECONNREFUSED
+      true
+    end
 
     def presence(str)
       str.nil? || str.empty? ? nil : str

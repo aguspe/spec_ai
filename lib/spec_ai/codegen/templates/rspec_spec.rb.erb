@@ -10,8 +10,9 @@ RSpec.describe <%= @description.inspect %> do
 <% else -%>
     @driver = Selenium::WebDriver.for :<%= browser %>
 <% end -%>
-    ignored = [Selenium::WebDriver::Error::StaleElementReferenceError]
-    @wait = Selenium::WebDriver::Wait.new(timeout: 10, ignore: ignored)
+    @ignored = [Selenium::WebDriver::Error::NoSuchElementError,
+                Selenium::WebDriver::Error::StaleElementReferenceError]
+    @wait = Selenium::WebDriver::Wait.new(timeout: 10, ignore: @ignored)
   end
 
   after { @driver.quit }

@@ -82,7 +82,12 @@ module SpecAI
       end
 
       def wait_line(step)
-        waiter = step.timeout == 10 ? "@wait.until" : "Selenium::WebDriver::Wait.new(timeout: #{step.timeout}).until"
+        waiter =
+          if step.timeout == 10
+            "@wait.until"
+          else
+            "Selenium::WebDriver::Wait.new(timeout: #{step.timeout}, ignore: @ignored).until"
+          end
         inner =
           case step.condition
           when "visible" then "@driver.find_element(#{loc(step.locator)}).displayed?"

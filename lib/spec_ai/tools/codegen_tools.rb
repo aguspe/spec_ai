@@ -39,6 +39,8 @@ module SpecAI
           else
             text(source)
           end
+        rescue StandardError => e
+          error("Export failed (#{e.class}): #{e.message}")
         end
       end
     end

@@ -5,9 +5,9 @@ RSpec.describe SpecAI::Codegen::RspecRenderer do
     r = SpecAI::Recorder.new
     r.record(action: :start_browser, value: "chrome", headless: true)
     r.record(action: :navigate, value: "https://example.com/login")
-    r.record(action: :type, locator: %w[id email], value: "user@example.com",
+    r.record(action: :type, locator: %w[id email], value: "user@example.com", clear: true,
              element: { tag: "input", text: "", id: "email", name: "email", type: "text" })
-    r.record(action: :type, locator: %w[id password], masked: true,
+    r.record(action: :type, locator: %w[id password], masked: true, clear: true,
              element: { tag: "input", text: "", id: "password", name: "password", type: "password" })
     r.record(action: :click, locator: %w[id login-btn],
              element: { tag: "button", text: "Log in", id: "login-btn", name: nil, type: "submit" })
@@ -48,7 +48,8 @@ RSpec.describe SpecAI::Codegen::RspecRenderer do
     expect(out).to include('@wait.until { @driver.title == "Store" }')
     expect(out).to include('@wait.until { @driver.find_element(css: ".cart").displayed? }')
     expect(out).to include('@wait.until { @driver.current_url.match?(Regexp.new("cart")) }')
-    expect(out).to include("ignore: ignored")
+    expect(out).to include("ignore: @ignored")
+    expect(out).to include("Selenium::WebDriver::Error::NoSuchElementError")
   end
 
   it "renders non-headless start without options" do
@@ -70,7 +71,7 @@ RSpec.describe SpecAI::Codegen::RspecRenderer do
     ]
     out = described_class.render(steps: steps, description: "d")
     # rubocop:disable Layout/LineLength
-    expect(out).to include('Selenium::WebDriver::Wait.new(timeout: 5).until { @driver.find_elements(name: "q").empty? }')
+    expect(out).to include('Selenium::WebDriver::Wait.new(timeout: 5, ignore: @ignored).until { @driver.find_elements(name: "q").empty? }')
     expect(out).to include('Selenium::WebDriver::Support::Select.new(@driver.find_element(id: "country")).select_by(:text, "Denmark")')
     # rubocop:enable Layout/LineLength
     expect(out).to include('@driver.find_element(id: "email").clear')
