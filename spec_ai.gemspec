@@ -20,7 +20,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "mcp", ">= 0.25"
   spec.add_dependency "selenium-webdriver", ">= 4.27"
   spec.metadata["rubygems_mfa_required"] = "true"
-  spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/aguspe/spec_ai"
   spec.metadata["changelog_uri"] = "https://github.com/aguspe/spec_ai/blob/main/CHANGELOG.md"
   spec.metadata["bug_tracker_uri"] = "https://github.com/aguspe/spec_ai/issues"
