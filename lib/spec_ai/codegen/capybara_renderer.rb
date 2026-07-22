@@ -57,6 +57,19 @@ module SpecAI
         @steps.flat_map { |step| lines_for(step) }
       end
 
+      # 1-based position among screenshot steps, by object identity so repeated
+      # bare screenshot steps get distinct filenames.
+      def screenshot_index(step)
+        seen = 0
+        @steps.each do |candidate|
+          next unless candidate.action == :screenshot
+
+          seen += 1
+          return seen if candidate.equal?(step)
+        end
+        seen
+      end
+
       def lines_for(step) # rubocop:disable Metrics/CyclomaticComplexity
         case step.action
         when :navigate then ["visit #{relative(step.value).inspect}"]
@@ -64,6 +77,7 @@ module SpecAI
         when :type then [type_line(step)]
         when :select_option then [select_line(step)]
         when :execute_script then [manual_comment(step)]
+        when :screenshot then ["page.save_screenshot(\"screenshot-#{screenshot_index(step)}.png\")"]
         when :assert_text then [assert_text_line(step)]
         when :assert_title then ["expect(page).to have_title(#{step.expected.inspect})"]
         when :wait_for, :assert_element then [presence_line(step.locator, step.condition)]
@@ -112,12 +126,20 @@ module SpecAI
         end
       end
 
+      # A human-facing Capybara locator (link/button text, fill_in key) is only
+      # safe when the session proved it matches exactly one element; step.unique
+      # is false when it was ambiguous, so we fall back to the exact selector.
+      def idiomatic?(step)
+        step.unique != false
+      end
+
       def click_line(step) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         el = step.element || {}
         text = el[:text].to_s
-        if (el[:tag] == "button" || (el[:tag] == "input" && %w[submit button].include?(el[:type].to_s))) && !text.empty?
+        button = el[:tag] == "button" || (el[:tag] == "input" && %w[submit button image].include?(el[:type].to_s))
+        if idiomatic?(step) && button && !text.empty?
           "click_button #{text.inspect}"
-        elsif el[:tag] == "a" && !text.empty?
+        elsif idiomatic?(step) && el[:tag] == "a" && !text.empty?
           "click_link #{text.inspect}"
         else
           "#{finder(step.locator)}.click"
@@ -126,13 +148,13 @@ module SpecAI
 
       # clear: true replays as replace (fill_in/set); clear: false replays as append
       # (send_keys), matching what Selenium actually did during the recording.
-      def type_line(step)
+      def type_line(step) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         el = step.element || {}
         field = el[:name] || el[:id]
         value = step.masked ? 'ENV.fetch("SPEC_AI_PASSWORD")' : step.value.inspect
         if !step.clear
           "#{finder(step.locator)}.send_keys(#{value})"
-        elsif field && %w[input textarea].include?(el[:tag])
+        elsif idiomatic?(step) && field && %w[input textarea].include?(el[:tag])
           "fill_in #{field.inspect}, with: #{value}"
         else
           "#{finder(step.locator)}.set(#{value})"
@@ -141,17 +163,22 @@ module SpecAI
 
       # Capybara's select matches option TEXT; a recording made via option value must
       # target the option node directly or the exported spec fails with ElementNotFound.
+      # An ambiguous select field falls back to selecting the option within the
+      # element's own unique locator.
       def select_line(step)
         el = step.element || {}
         field = el[:name] || el[:id]
         if step.select_by == :value
-          selector = "option[value=#{css_quote(step.value)}]"
-          "#{finder(step.locator)}.find(#{selector.inspect}).select_option"
-        elsif field
+          "#{finder(step.locator)}.find(#{option_value_selector(step.value).inspect}).select_option"
+        elsif idiomatic?(step) && field
           "select #{step.value.inspect}, from: #{field.inspect}"
         else
-          "#{finder(step.locator)}.select_option"
+          "#{finder(step.locator)}.find(\"option\", text: #{step.value.inspect}, exact_text: true).select_option"
         end
+      end
+
+      def option_value_selector(value)
+        "option[value=#{css_quote(value)}]"
       end
 
       # Dispatches by locator strategy (not the lossy css() fallback) so xpath/link_text

@@ -14,6 +14,7 @@ RSpec.describe SpecAI::BrowserSession do
     double("driver").tap do |d| # rubocop:disable RSpec/VerifiedDoubles
       allow(d).to receive_messages(quit: nil, current_url: "https://x.test/", title: "X")
       allow(d).to receive(:find_element).with({ id: "login-btn" }).and_return(fake_element)
+      allow(d).to receive(:execute_script).and_return(1)
     end
   end
 
@@ -32,7 +33,19 @@ RSpec.describe SpecAI::BrowserSession do
   it "click returns element metadata captured before the click" do
     session.start(browser: "chrome")
     meta = session.click(%w[id login-btn])
-    expect(meta).to eq(tag: "button", text: "Log in", id: "login-btn", name: nil, type: "submit")
+    expect(meta).to include(tag: "button", text: "Log in", id: "login-btn", name: nil, type: "submit")
+  end
+
+  it "marks a click ambiguous when the button text matches more than one element" do
+    session.start(browser: "chrome")
+    allow(fake_driver).to receive(:execute_script).with(anything, "button", "Log in").and_return(2)
+    expect(session.click(%w[id login-btn])[:unique]).to be(false)
+  end
+
+  it "marks a click unique when the button text matches exactly one element" do
+    session.start(browser: "chrome")
+    allow(fake_driver).to receive(:execute_script).with(anything, "button", "Log in").and_return(1)
+    expect(session.click(%w[id login-btn])[:unique]).to be(true)
   end
 
   it "wraps NoSuchElementError into ElementNotFoundError with suggestions" do

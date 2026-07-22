@@ -76,6 +76,17 @@ RSpec.describe SpecAI::Codegen::RspecRenderer do
     expect(generated_lint_clean?(out)).to be(true), "generated RSpec output failed the generated-code lint config"
   end
 
+  it "renders a screenshot step as a save_screenshot call, not a dropped line" do
+    steps = [
+      SpecAI::Step.new(action: :screenshot),
+      SpecAI::Step.new(action: :screenshot),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include('@driver.save_screenshot("screenshot-1.png")')
+    expect(out).to include('@driver.save_screenshot("screenshot-2.png")')
+  end
+
   it "renders non-headless start without options" do
     steps = [SpecAI::Step.new(action: :start_browser, value: "firefox", headless: false),
              SpecAI::Step.new(action: :assert_title, expected: "x")]

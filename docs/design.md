@@ -120,12 +120,14 @@ require "rspec"
 RSpec.describe "Login flow" do
   before do
     @driver = Selenium::WebDriver.for :chrome
-    @wait = Selenium::WebDriver::Wait.new(timeout: 10)
+    @ignored = [Selenium::WebDriver::Error::NoSuchElementError,
+                Selenium::WebDriver::Error::StaleElementReferenceError]
+    @wait = Selenium::WebDriver::Wait.new(timeout: 10, ignore: @ignored)
   end
 
   after { @driver.quit }
 
-  it "logs in successfully" do
+  it "replays the recorded session" do
     @driver.navigate.to "https://example.com/login"
     @driver.find_element(id: "email").clear
     @driver.find_element(id: "email").send_keys "user@example.com"
@@ -133,6 +135,7 @@ RSpec.describe "Login flow" do
     @driver.find_element(id: "password").send_keys ENV.fetch("SPEC_AI_PASSWORD")
     @driver.find_element(id: "login-btn").click
     @wait.until { @driver.find_element(css: ".welcome").displayed? }
+    @wait.until { @driver.find_element(css: ".welcome").text.include?("Welcome back") }
     expect(@driver.find_element(css: ".welcome").text).to include("Welcome back")
   end
 end
@@ -156,15 +159,22 @@ RSpec omits the `.clear`, Capybara emits `find(...).send_keys(...)`.
 require "rails_helper"
 
 RSpec.describe "Login flow", type: :system do
-  it "logs in successfully" do
+  it "replays the recorded session" do
     visit "/login"
     fill_in "email", with: "user@example.com"
     fill_in "password", with: ENV.fetch("SPEC_AI_PASSWORD")
     click_button "Log in"
-    expect(page).to have_css(".welcome", text: "Welcome back")
+    expect(page).to have_css(".welcome")
+    expect(find(".welcome")).to have_content("Welcome back")
   end
 end
 ```
+
+Human-facing Capybara locators (`click_link`/`click_button`/`fill_in`/`select`) are
+only emitted when the session proved they match exactly one element at record time
+(a `unique` flag on the Step). When the same text/name matches several elements, the
+export falls back to the element's exact `find("[id='…']")` locator so the spec never
+raises `Capybara::Ambiguous`.
 
 ## Error handling
 

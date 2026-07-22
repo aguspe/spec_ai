@@ -2,13 +2,14 @@
 
 class FakeSession
   attr_reader :calls
-  attr_accessor :alive, :raise_on_next
+  attr_accessor :alive, :raise_on_next, :unique
 
   def initialize
     @calls = []
     @alive = false
     @raise_on_next = nil
     @last_snapshot = []
+    @unique = true
   end
 
   def check!(name)
@@ -65,19 +66,19 @@ class FakeSession
 
   def click(_locator)
     check!(:click)
-    metadata
+    metadata.merge(unique: @unique)
   end
 
   # rubocop:disable Lint/UnusedMethodArgument
   def type(_locator, _text, clear: false)
     check!(:type)
-    metadata.merge(tag: "input", type: "text", text: "")
+    metadata.merge(tag: "input", type: "text", text: "", unique: @unique)
   end
   # rubocop:enable Lint/UnusedMethodArgument
 
   def select_option(_locator, text: nil, value: nil)
     check!(:select)
-    [metadata, :text, text || value]
+    [metadata.merge(unique: @unique), :text, text || value]
   end
 
   def screenshot_base64

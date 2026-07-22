@@ -33,7 +33,8 @@ module SpecAI
         def call(strategy:, value:, server_context:)
           guarded(server_context) do |app|
             meta = app.session.click([strategy, value])
-            app.recorder.record(action: :click, locator: [strategy, value], element: meta)
+            unique = meta.delete(:unique)
+            app.recorder.record(action: :click, locator: [strategy, value], element: meta, unique: unique)
             text("Clicked #{strategy}=#{value}. Now at: #{app.session.title} (#{app.session.current_url})")
           end
         end
@@ -61,13 +62,14 @@ module SpecAI
           # rubocop:enable Style/KeywordParametersOrder
           guarded(server_context) do |app|
             meta = app.session.type([strategy, value], text, clear: clear)
+            unique = meta.delete(:unique)
             if app.session.password_field?(meta)
               app.recorder.record(action: :type, locator: [strategy, value], element: meta,
-                                  masked: true, clear: clear)
+                                  masked: true, clear: clear, unique: unique)
               text("Typed into #{strategy}=#{value} (password field - value masked in recording).")
             else
               app.recorder.record(action: :type, locator: [strategy, value], element: meta,
-                                  value: text, clear: clear)
+                                  value: text, clear: clear, unique: unique)
               text("Typed #{text.inspect} into #{strategy}=#{value}.")
             end
           end
@@ -98,8 +100,9 @@ module SpecAI
 
           guarded(server_context) do |app|
             meta, by, chosen = app.session.select_option([strategy, value], text: text, value: option_value)
+            unique = meta.delete(:unique)
             app.recorder.record(action: :select_option, locator: [strategy, value], element: meta,
-                                value: chosen, select_by: by)
+                                value: chosen, select_by: by, unique: unique)
             text("Selected #{chosen.inspect} in #{strategy}=#{value}.")
           end
         end

@@ -11,6 +11,14 @@ RSpec.describe "interaction tools" do
     response.content.first[:text]
   end
 
+  it "records the session's uniqueness verdict on the step without leaking it into element" do
+    session.unique = false
+    SpecAI::Tools::Click.call(strategy: "id", value: "nav-home", server_context: ctx)
+    step = app.recorder.steps.last
+    expect(step.unique).to be(false)
+    expect(step.element).not_to have_key(:unique)
+  end
+
   it "click records locator and element metadata" do
     res = SpecAI::Tools::Click.call(strategy: "id", value: "login-btn", server_context: ctx)
     expect(response_text(res)).to include("Clicked id=login-btn")

@@ -3,7 +3,7 @@
 module SpecAI
   Step = Struct.new(
     :action, :locator, :value, :element, :expected, :scope,
-    :masked, :condition, :timeout, :js, :select_by, :headless, :clear,
+    :masked, :condition, :timeout, :js, :select_by, :headless, :clear, :unique,
     keyword_init: true
   )
 

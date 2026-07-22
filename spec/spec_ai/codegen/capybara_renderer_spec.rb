@@ -22,6 +22,49 @@ RSpec.describe SpecAI::Codegen::CapybaraRenderer do
     expect(described_class.render(steps: login_steps, description: "Login flow")).to eq(golden)
   end
 
+  it "uses find(...).click instead of click_link when the link text is ambiguous" do
+    steps = [
+      SpecAI::Step.new(action: :click, locator: %w[id nav-home], unique: false,
+                       element: { tag: "a", text: "Home", id: "nav-home", name: nil, type: nil }),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include(%q{find("[id='nav-home']").click})
+    expect(out).not_to include("click_link")
+  end
+
+  it "uses fill_in when the field is unique but find(...).set when ambiguous" do
+    unique = SpecAI::Step.new(action: :type, locator: %w[id q1], value: "hi", clear: true, unique: true,
+                              element: { tag: "input", text: "", id: "q1", name: "q", type: "text" })
+    ambiguous = SpecAI::Step.new(action: :type, locator: %w[id q2], value: "hi", clear: true, unique: false,
+                                 element: { tag: "input", text: "", id: "q2", name: "q", type: "text" })
+    title = SpecAI::Step.new(action: :assert_title, expected: "x")
+    expect(described_class.render(steps: [unique, title], description: "d")).to include('fill_in "q", with: "hi"')
+    out = described_class.render(steps: [ambiguous, title], description: "d")
+    expect(out).to include(%q{find("[id='q2']").set("hi")})
+    expect(out).not_to include("fill_in")
+  end
+
+  it "falls back to a scoped option lookup when a select field is ambiguous" do
+    steps = [
+      SpecAI::Step.new(action: :select_option, locator: %w[id c2], value: "Denmark", select_by: :text,
+                       unique: false, element: { tag: "select", text: "", id: "c2", name: "country", type: nil }),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include(%q{find("[id='c2']").find("option", text: "Denmark", exact_text: true).select_option})
+    expect(out).not_to include("select \"Denmark\", from:")
+  end
+
+  it "renders a screenshot step instead of silently dropping it" do
+    steps = [
+      SpecAI::Step.new(action: :screenshot),
+      SpecAI::Step.new(action: :assert_title, expected: "x")
+    ]
+    out = described_class.render(steps: steps, description: "d")
+    expect(out).to include('page.save_screenshot("screenshot-1.png")')
+  end
+
   it "falls back to find(css).click when the element has no button/link identity" do
     steps = [SpecAI::Step.new(action: :click, locator: ["css", ".card"],
                               element: { tag: "div", text: "Open", id: nil, name: nil, type: nil }),

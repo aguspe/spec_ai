@@ -30,6 +30,32 @@ module SpecAI
       }));
     JS
 
+    # Counts how many elements a Capybara idiomatic locator (link/button text,
+    # or a field's fill_in key) would match, so the renderer only uses the
+    # idiomatic form when it is unambiguous. kind + key are passed as arguments
+    # (arguments[0], arguments[1]) so no value is interpolated into the script.
+    UNIQUENESS_JS = <<~JS
+      const kind = arguments[0], key = arguments[1];
+      const txt = (el) => (el.innerText || el.value || el.textContent || "").trim();
+      let els = [];
+      if (kind === "link") {
+        els = Array.from(document.querySelectorAll("a"))
+          .filter((a) => a.id === key || txt(a) === key || a.getAttribute("title") === key);
+      } else if (kind === "button") {
+        els = Array.from(document.querySelectorAll("button, input[type=submit], input[type=button], input[type=image]"))
+          .filter((b) => b.id === key || b.value === key || txt(b) === key || b.getAttribute("title") === key);
+      } else {
+        const direct = Array.from(document.querySelectorAll("input, textarea, select"))
+          .filter((f) => f.id === key || f.name === key || f.getAttribute("placeholder") === key);
+        const labeled = Array.from(document.querySelectorAll("label"))
+          .filter((l) => l.textContent.trim() === key)
+          .map((l) => l.htmlFor ? document.getElementById(l.htmlFor) : l.querySelector("input, textarea, select"))
+          .filter(Boolean);
+        els = Array.from(new Set(direct.concat(labeled)));
+      }
+      return els.length;
+    JS
+
     attr_reader :browser_name, :last_snapshot
 
     def initialize(driver_factory: nil)
@@ -79,6 +105,7 @@ module SpecAI
     def click(locator)
       element = find(locator)
       metadata = guard { element_metadata(element) }
+      metadata[:unique] = capybara_uniqueness(:click, metadata)
       guard { element.click }
       metadata
     end
@@ -86,11 +113,25 @@ module SpecAI
     def type(locator, text, clear: false)
       element = find(locator)
       metadata = guard { element_metadata(element) }
+      metadata[:unique] = capybara_uniqueness(:field, metadata)
       guard do
         element.clear if clear
         element.send_keys(text)
       end
       metadata
+    end
+
+    # Whether the Capybara idiomatic locator for this element (link/button text,
+    # or a field's fill_in key) matches exactly one element. nil when the element
+    # would not use an idiomatic locator anyway (renderer falls back regardless).
+    def capybara_uniqueness(kind, metadata)
+      count_kind, key = uniqueness_target(kind, metadata)
+      return nil if key.nil?
+
+      count = guard { @driver.execute_script(UNIQUENESS_JS, count_kind, key) }
+      count == 1
+    rescue Selenium::WebDriver::Error::WebDriverError
+      nil
     end
 
     WAIT_CONDITIONS = %w[visible present gone].freeze
@@ -102,6 +143,7 @@ module SpecAI
 
       element = find(locator)
       metadata = guard { element_metadata(element) }
+      metadata[:unique] = capybara_uniqueness(:field, metadata)
       by, chosen = text.nil? ? [:value, value] : [:text, text]
       select = guard { Selenium::WebDriver::Support::Select.new(element) }
       begin
@@ -110,6 +152,28 @@ module SpecAI
         raise OptionNotFoundError.new(by, chosen, available_options(select, by))
       end
       [metadata, by, chosen]
+    end
+
+    def uniqueness_target(kind, metadata)
+      if kind == :field
+        key = metadata[:name] || metadata[:id]
+        return [nil, nil] if key.nil?
+
+        ["field", key]
+      else # :click
+        text = metadata[:text].to_s
+        return [nil, nil] if text.empty?
+
+        return ["link", text] if metadata[:tag] == "a"
+        return ["button", text] if button_metadata?(metadata)
+
+        [nil, nil]
+      end
+    end
+
+    def button_metadata?(metadata)
+      metadata[:tag] == "button" ||
+        (metadata[:tag] == "input" && %w[submit button image].include?(metadata[:type].to_s))
     end
 
     def available_options(select, by)

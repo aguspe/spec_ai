@@ -61,6 +61,19 @@ module SpecAI
         "#{strategy}: #{value.inspect}"
       end
 
+      # 1-based position among screenshot steps, by object identity so repeated
+      # bare screenshot steps get distinct filenames.
+      def screenshot_index(step)
+        seen = 0
+        @steps.each do |candidate|
+          next unless candidate.action == :screenshot
+
+          seen += 1
+          return seen if candidate.equal?(step)
+        end
+        seen
+      end
+
       def lines_for(step) # rubocop:disable Metrics/CyclomaticComplexity
         case step.action
         when :navigate then ["@driver.navigate.to #{step.value.inspect}"]
@@ -69,6 +82,7 @@ module SpecAI
         when :select_option then [select_line(step)]
         when :wait_for then [wait_line(step)]
         when :execute_script then [manual_comment(step)]
+        when :screenshot then ["@driver.save_screenshot(\"screenshot-#{screenshot_index(step)}.png\")"]
         when :assert_text then assert_text_lines(step)
         when :assert_title then assert_title_lines(step)
         when :assert_element then assert_element_lines(step)
